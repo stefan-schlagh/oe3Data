@@ -1,6 +1,10 @@
 import sys,os,time,urllib
 import traceback, json
+import argparse
 from operator import itemgetter
+
+import requests
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -15,19 +19,31 @@ def main(argv):
 class Oe3Crawler:
     def __init__(self,argv):
         try:
-            self.crawlData()
-            #self.readTracks()
-            #self.deleteDuplicates()
-            #self.printTracks()
-            self.writeTracks()
+            self.executeOptions()
         except Exception as e:
-            self.writeTracks()
             traceback.print_exc()
             self.Log("Exited with an error: " + str(e))
     
     def Log(self,val):
         print(val)
     
+    def executeOptions(self):
+        # parse args
+        parser = argparse.ArgumentParser()
+        parser.add_argument("mode", help="the mode that should be used, modes:  extractSongTitles | extractSongs",type=str)
+        args = parser.parse_args()
+
+        mode = args.mode
+        if(mode == "crawlData"):
+            self.crawlData()
+        elif(mode == "fetchData"):
+            self.fetchData()
+            self.writeTracks()
+        elif(mode == "analyze"):
+            self.readTracks()
+            self.deleteDuplicates()
+            self.printTracks()
+            self.writeIntoCSV("tracks.csv")
     def crawlData(self):
 
         self.tracks = []
@@ -112,6 +128,19 @@ class Oe3Crawler:
         f.write(json.dumps(self.tracks))
         f.close()
     
+    def writeTracks(self,fileName):
+        f = open(fileName,"w")
+        f.write(json.dumps(self.tracks))
+        f.close()
+
+    def writeIntoCSV(self,fileName):
+        f = open(fileName,"w")
+        
+        for track in self.tracks:
+            f.write(str(track["num"]) + ";" + track["title"] + ";" + track["interpreter"] + "\n")
+        
+        f.close()
+    
     def readTracks(self):
         f = open("tracks.txt","r")
         self.tracks = json.loads(f.read())
@@ -147,6 +176,40 @@ class Oe3Crawler:
                     "num": 1
                 })
         self.tracks = sorted(tracksNew, key=itemgetter('num'), reverse=True) 
+    
+    def fetchData(self):
+
+        self.tracks = []
+
+        broadcastDays = self.fetchBroadcasts()
+
+        for broadcastDay in broadcastDays:
+            self.Log(broadcastDay["day"])
+
+            for broadcast in broadcastDay["broadcasts"]:
+                self.Log(broadcast["title"])
+
+                broadCastDataItems = self.fetchJson(broadcast["href"])["items"]
+                for broadCastData in broadCastDataItems:
+                    #is a song?
+                    if("songId" in broadCastData and broadCastData["songId"] != None):
+                        songData = {
+                            "interpreter": broadCastData["interpreter"],
+                            "title": broadCastData["title"],
+                            "description": broadCastData["description"]
+                        }
+                        self.Log(songData)
+                        self.tracks.append(songData)
+
+    def fetchBroadcasts(self):
+        r = requests.get('https://audioapi2.orf.at/oe3/json/4.0/broadcasts?_o=oe3.orf.at')
+        if(r.status_code == 200):
+            return r.json()
+    
+    def fetchJson(self,href):
+        r = requests.get(href)
+        if(r.status_code == 200):
+            return r.json()
 
 if __name__ == "__main__":
    main(sys.argv[1:])
