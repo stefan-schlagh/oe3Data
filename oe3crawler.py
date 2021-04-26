@@ -44,6 +44,8 @@ class Oe3Crawler:
             self.deleteDuplicates()
             self.printTracks()
             self.writeIntoCSV("tracks.csv")
+            self.getInterpreters()
+            self.writeInterpretersIntoCSV("interpreters.csv")
     def crawlData(self):
 
         self.tracks = []
@@ -140,6 +142,14 @@ class Oe3Crawler:
             f.write(str(track["num"]) + ";" + track["title"] + ";" + track["interpreter"] + "\n")
         
         f.close()
+
+    def writeInterpretersIntoCSV(self,fileName):
+        f = open(fileName,"w")
+        
+        for interpreter in self.interpreters:
+            f.write(str(interpreter["num"]) + ";" + interpreter["interpreter"] + "\n")
+        
+        f.close()
     
     def readTracks(self):
         f = open("tracks.txt","r")
@@ -176,6 +186,33 @@ class Oe3Crawler:
                     "num": 1
                 })
         self.tracks = sorted(tracksNew, key=itemgetter('num'), reverse=True) 
+    
+    def getInterpreters(self):
+
+        interpreters = []
+
+        def isInInterpreters(_interpreter):
+            for interpreter in interpreters:
+                if(interpreter["interpreter"] == _interpreter):
+                    return True
+            return False
+        def getInterpreter(_interpreter):
+            for interpreter in interpreters:
+                if(interpreter["interpreter"] == _interpreter):
+                    return interpreter
+        def incrementInterpreter(track):
+            interpreter = getInterpreter(track["interpreter"])
+            interpreter["num"] = interpreter["num"] + track["num"]
+
+        for track in self.tracks:
+            if(isInInterpreters(track["interpreter"])):
+                incrementInterpreter(track)
+            else:
+                interpreters.append({
+                    "interpreter": track["interpreter"],
+                    "num": track["num"]
+                })
+        self.interpreters = sorted(interpreters, key=itemgetter('num'), reverse=True) 
     
     def fetchData(self):
 
