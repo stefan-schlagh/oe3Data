@@ -125,12 +125,7 @@ class Oe3Crawler:
 
         driver.close()
     
-    def writeTracks(self):
-        f = open("tracks.txt","w")
-        f.write(json.dumps(self.tracks))
-        f.close()
-    
-    def writeTracks(self,fileName):
+    def writeTracks(self,fileName="tracks.txt"):
         f = open(fileName,"w")
         f.write(json.dumps(self.tracks))
         f.close()
