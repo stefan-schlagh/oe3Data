@@ -34,7 +34,8 @@ class Oe3Crawler:
         elif(mode == "analyze"):
             self.readTracks()
             self.deleteDuplicates()
-            self.printTracks()
+            self.getTracks()
+            #self.printTracks()
             self.writeIntoCSV("tracks.csv")
             #self.getInterpreters()
             #self.writeInterpretersIntoCSV("interpreters.csv")
@@ -110,7 +111,7 @@ class Oe3Crawler:
                 if(not self.isInTracks(tracks,track)):
                     tracks.append(track)
         
-        self.tracks = sorted(tracks, key=itemgetter('title')) 
+        self.tracks = sorted(tracks, key=itemgetter('interpreter')) 
 
     def isInTracks(self,tracks,_track):
         for track in tracks:
@@ -128,27 +129,26 @@ class Oe3Crawler:
         
         tracksNew = []
 
-        def isInTracksNew(track):
-            for trackNew in tracksNew:
-                if(track["title"] == trackNew["title"] and track["interpreter"] == trackNew["interpreter"]):
-                    return True
-            return False
         def getTrackNew(track):
             for trackNew in tracksNew:
                 if(track["title"] == trackNew["title"] and track["interpreter"] == trackNew["interpreter"]):
                     return trackNew
         def incrementTrack(track):
             trackNew = getTrackNew(track)
+            self.Log(trackNew)
             trackNew["num"] = trackNew["num"] + 1
         
         for track in tracks:
-            if(isInTracksNew(track)):
+            if(self.isInTracks(tracksNew,track)):
                 incrementTrack(track)
             else:
+                num = 1
+                if("num" in track):
+                    num = track["num"]
                 tracksNew.append({
                     "interpreter": track["interpreter"],
                     "title": track["title"],
-                    "num": 1
+                    "num": num
                 })
         return tracksNew
         #return sorted(tracksNew, key=itemgetter('num'), reverse=True)
