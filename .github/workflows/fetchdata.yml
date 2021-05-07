@@ -1,0 +1,54 @@
+name: fetchdata
+
+on:
+  #“At 00:30 on Monday and Thursday.” 
+  schedule:
+    - cron: '30 0 * * 1,4'
+  
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'     
+        required: true
+        default: 'warning'
+      tags:
+        description: 'Test scenario tags' 
+jobs:
+  update:
+
+    runs-on: ubuntu-latest
+
+    # setup timezone
+    steps:
+      # chat client repository is checked out
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          repository: stefan-schlagh/oe3Crawler
+          token: ${{ secrets.REPOSITORY_ACCESS }}
+          path: zellamseewebscraper
+      # node.js setup
+      - uses: actions/setup-node@v1
+        with:
+          node-version: '14'
+      # install dependencies
+      - name: pip install
+        run: |
+          cd ./oe3Crawler
+          pip install -r requirements.txt
+      # run script
+      - name: run script
+        run: |
+          cd ./oe3Crawler
+          python oe3crawler.py fetchData 
+      # commit changes
+      - name: commit changes
+        run: |
+          cd ./zellamseewebscraper
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          set +e
+          git add .
+          git commit -m "updated tracks"
+          git push
+          set -e
