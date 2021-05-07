@@ -1,3 +1,6 @@
 *.txt
 *.csv
 *.xlsx
+
+#exclude requirements
+!requirements.txt

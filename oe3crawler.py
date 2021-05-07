@@ -1,4 +1,4 @@
-import sys,os,time,urllib
+import sys,os,time,urllib,datetime
 import traceback, json
 import argparse
 from operator import itemgetter
@@ -23,7 +23,7 @@ class Oe3Crawler:
     def executeOptions(self):
         # parse args
         parser = argparse.ArgumentParser()
-        parser.add_argument("mode", help="the mode that should be used, modes:  extractSongTitles | extractSongs",type=str)
+        parser.add_argument("mode", help="the mode that should be used",type=str)
         args = parser.parse_args()
 
         mode = args.mode
@@ -34,18 +34,25 @@ class Oe3Crawler:
         elif(mode == "analyze"):
             self.readTracks()
             self.deleteDuplicates()
-            self.getTracks()
             #self.printTracks()
             self.writeIntoCSV("tracks.csv")
             #self.getInterpreters()
             #self.writeInterpretersIntoCSV("interpreters.csv")
+        elif(mode == "all"):
+            self.fetchData()
+            self.deleteDuplicates()
+            self.writeTracks()
+            self.writeIntoCSV("tracks.csv")
     
-    def writeTracks(self,fileName="tracks.txt"):
+    def writeTracks(self,fileName="tracks.json"):
         f = open(fileName,"w")
         f.write(json.dumps(self.trackDays))
         f.close()
 
     def writeIntoCSV(self,fileName):
+
+        self.getTracks()
+
         f = open(fileName,"w")
         
         rows, cols = (len(self.tracks) + 1, len(self.trackDays) + 2)
@@ -93,9 +100,15 @@ class Oe3Crawler:
         f.close()
     
     def readTracks(self):
-        f = open("tracks.txt","r")
-        self.trackDays = json.loads(f.read())
-        f.close()
+        fname = "tracks.json"
+        # if file exists: load
+        if(os.path.isfile(fname)):
+            f = open(fname,"r")
+            self.trackDays = json.loads(f.read())
+            f.close()
+        # else: create empty array
+        else:
+            self.trackDays = []
     
     def printTracks(self):
         self.getTracks()
@@ -180,37 +193,54 @@ class Oe3Crawler:
                 })
         self.interpreters = sorted(interpreters, key=itemgetter('num'), reverse=True) 
     
+    def doesTrackDayExist(self,day):
+
+        for trackDay in self.trackDays:
+            if(trackDay["day"] == day):
+                return True
+        return False
+
     def fetchData(self):
 
-        self.trackDays = []
+        #self.trackDays = []
+
+        self.readTracks()
+
+        def formatted(date):
+            return date.strftime("%Y%m%d")
+
+        today = formatted(datetime.datetime.now())
+        weekAgo = formatted(datetime.datetime.now() - datetime.timedelta(days=7))
 
         broadcastDays = self.fetchBroadcasts()
 
         for broadcastDay in broadcastDays:
-            day = broadcastDay["day"]
-            self.Log(day)
-            # track array of day
-            tracks = []
+            day = str(broadcastDay["day"])
+            # if exactly 1 week ago or today, do not add
+            # if already in trackDays, do not add
+            if(day != today and day != weekAgo and not self.doesTrackDayExist(day)):
+                # track array of day
+                tracks = []
 
-            for broadcast in broadcastDay["broadcasts"]:
-                self.Log(broadcast["title"])
+                for broadcast in broadcastDay["broadcasts"]:
+                    self.Log(broadcast["title"])
 
-                broadCastDataItems = self.fetchJson(broadcast["href"])["items"]
-                for broadCastData in broadCastDataItems:
-                    #is a song?
-                    if("songId" in broadCastData and broadCastData["songId"] != None):
-                        songData = {
-                            "interpreter": broadCastData["interpreter"],
-                            "title": broadCastData["title"],
-                            "description": broadCastData["description"]
-                        }
-                        self.Log(songData)
-                        tracks.append(songData)
-            # append day
-            self.trackDays.append({
-                "day": day,
-                "tracks": tracks
-            })
+                    broadCastDataItems = self.fetchJson(broadcast["href"])["items"]
+                    for broadCastData in broadCastDataItems:
+                        #is a song?
+                        if("songId" in broadCastData and broadCastData["songId"] != None):
+                            songData = {
+                                "interpreter": broadCastData["interpreter"],
+                                "title": broadCastData["title"],
+                                "description": broadCastData["description"]
+                            }
+                            self.Log(songData)
+                            tracks.append(songData)
+                # append day
+                self.trackDays.append({
+                    "day": day,
+                    "tracks": tracks
+                })
 
     def fetchBroadcasts(self):
         r = requests.get('https://audioapi2.orf.at/oe3/json/4.0/broadcasts?_o=oe3.orf.at')
