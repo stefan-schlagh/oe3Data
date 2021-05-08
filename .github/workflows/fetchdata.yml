@@ -40,7 +40,7 @@ jobs:
       - name: run script
         run: |
           cd ./oe3Crawler
-          python oe3crawler.py fetchData 
+          python oe3crawler.py all 
       # commit changes
       - name: commit changes
         run: |
