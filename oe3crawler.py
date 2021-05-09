@@ -9,6 +9,8 @@ import requests
 def main(argv):
     Oe3Crawler(argv)
 
+csvSeparator = ","
+
 class Oe3Crawler:
     def __init__(self,argv):
         try:
@@ -68,8 +70,8 @@ class Oe3Crawler:
         # write titles + interpreters
         for i in range(len(self.tracks)):
             track = self.tracks[i]
-            fields[i + 1][0] = track["title"]
-            fields[i + 1][1] = track["interpreter"]
+            fields[i + 1][0] = "\"" + track["title"] + "\""
+            fields[i + 1][1] = "\"" + track["interpreter"] + "\""
 
         # write nums
         for i in range(len(self.tracks)):
@@ -80,7 +82,7 @@ class Oe3Crawler:
 
         for fieldList in fields:
             for field in fieldList:
-                f.write(str(field) + ";")
+                f.write(str(field) + csvSeparator)
             f.write("\n")
         
         f.close()
@@ -95,7 +97,7 @@ class Oe3Crawler:
         f = open(fileName,"w")
         
         for interpreter in self.interpreters:
-            f.write(str(interpreter["num"]) + ";" + interpreter["interpreter"] + "\n")
+            f.write(str(interpreter["num"]) + csvSeparator + interpreter["interpreter"] + "\n")
         
         f.close()
     
