@@ -38,13 +38,13 @@ class Oe3Crawler:
             self.deleteDuplicates()
             #self.printTracks()
             self.writeIntoCSV("tracks.csv")
-            #self.getInterpreters()
-            #self.writeInterpretersIntoCSV("interpreters.csv")
+            self.writeInterpretersIntoCSV("interpreters.csv")
         elif(mode == "all"):
             self.fetchData()
             self.deleteDuplicates()
             self.writeTracks()
             self.writeIntoCSV("tracks.csv")
+            self.writeInterpretersIntoCSV("interpreters.csv")
     
     def writeTracks(self,fileName="tracks.json"):
         f = open(fileName,"w")
@@ -94,13 +94,45 @@ class Oe3Crawler:
         return 0
 
     def writeInterpretersIntoCSV(self,fileName):
+
+        self.getInterpreters()
+
         f = open(fileName,"w")
         
-        for interpreter in self.interpreters:
-            f.write(str(interpreter["num"]) + csvSeparator + interpreter["interpreter"] + "\n")
+        rows, cols = (len(self.interpreters) + 1, len(self.trackDays) + 1)
+        fields = [[0 for i in range(cols)] for j in range(rows)]
+
+        fields[0][0] = "interpreter"
+
+        # write days TODO: format
+        for i in range(len(self.trackDays)):
+            fields[0][i + 1] = self.trackDays[i]["day"]
+
+        # write titles + interpreters
+        for i in range(len(self.interpreters)):
+            interpreter = self.interpreters[i]
+            fields[i + 1][0] = "\"" + interpreter + "\""
+
+        # write nums
+        for i in range(len(self.interpreters)):
+            for j in range(len(self.interpreterDays)):
+                interpreterDay = self.interpreterDays[j]
+                interpreter = self.interpreters[i]
+                fields[i + 1][j + 1] = self.getTrackNumFromInterpreterDay(interpreter,interpreterDay)
+
+        for fieldList in fields:
+            for field in fieldList:
+                f.write(str(field) + csvSeparator)
+            f.write("\n")
         
         f.close()
-    
+
+    def getTrackNumFromInterpreterDay(self,_interpreter,interpreterDay):
+        for interpreter in interpreterDay:
+            if(interpreter["interpreter"] == _interpreter):
+                return interpreter["num"]
+        return 0
+
     def readTracks(self):
         fname = "tracks.json"
         # if file exists: load
@@ -126,7 +158,7 @@ class Oe3Crawler:
                 if(not self.isInTracks(tracks,track)):
                     tracks.append(track)
         
-        self.tracks = sorted(tracks, key=itemgetter('interpreter')) 
+        self.tracks = sorted(tracks, key=itemgetter('interpreter'))
 
     def isInTracks(self,tracks,_track):
         for track in tracks:
@@ -166,9 +198,37 @@ class Oe3Crawler:
                     "num": num
                 })
         return tracksNew
-        #return sorted(tracksNew, key=itemgetter('num'), reverse=True)
 
     def getInterpreters(self):
+
+        self.deleteInterpreterDuplicates()
+
+        interpreters = []
+
+        for interpreterDay in self.interpreterDays:
+            for interpreter in interpreterDay:
+                #self.Log(interpreter)
+                if(not self.isInInterpreters(interpreters,interpreter["interpreter"])):
+                    interpreters.append(interpreter["interpreter"])
+
+        self.interpreters = sorted(interpreters)
+
+    def isInInterpreters(self,interpreters,_interpreter):
+        for interpreter in interpreters:
+            if(interpreter == _interpreter):
+                return True
+        return False
+
+    def deleteInterpreterDuplicates(self):
+
+        interpreterDays = []
+
+        for trackDay in self.trackDays:
+            interpreterDays.append(self.deleteInterpreterDayDuplicates(trackDay["tracks"]))
+
+        self.interpreterDays = interpreterDays
+
+    def deleteInterpreterDayDuplicates(self,tracks):
 
         interpreters = []
 
@@ -185,7 +245,7 @@ class Oe3Crawler:
             interpreter = getInterpreter(track["interpreter"])
             interpreter["num"] = interpreter["num"] + track["num"]
 
-        for track in self.trackDays:
+        for track in tracks:
             if(isInInterpreters(track["interpreter"])):
                 incrementInterpreter(track)
             else:
@@ -193,7 +253,7 @@ class Oe3Crawler:
                     "interpreter": track["interpreter"],
                     "num": track["num"]
                 })
-        self.interpreters = sorted(interpreters, key=itemgetter('num'), reverse=True) 
+        return interpreters
     
     def doesTrackDayExist(self,day):
 

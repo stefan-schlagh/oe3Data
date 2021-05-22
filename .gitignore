@@ -2,8 +2,9 @@
 *.csv
 *.xlsx
 
-#exclude tracks.csv
+#exclude tracks.csv, interpreters.csv
 !tracks.csv
+!interpreters.csv
 
 #exclude requirements
 !requirements.txt
