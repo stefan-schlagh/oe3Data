@@ -4,47 +4,50 @@ import argparse
 from operator import itemgetter
 
 import requests
-
+import pandas as pd
 
 def main(argv):
-    Oe3Crawler(argv)
+    try:
+        executeOptions()
+    except Exception as e:
+        traceback.print_exc()
+        print("Exited with an error: " + str(e))
+
+def executeOptions():
+    # parse args
+    parser = argparse.ArgumentParser()
+    parser.add_argument("mode", help="the mode that should be used",type=str)
+    args = parser.parse_args()
+
+    mode = args.mode
+    if(mode == "fetchData"):
+        fetchData()
+    elif(mode == "analyze"):
+        analyze()
+    elif(mode == "all"):
+        fetchData()
+        analyze()
+
+def fetchData():
+    Oe3Crawler()
+
+def analyze():
+    trackAnalyzer = TrackAnalyzer()
+    trackAnalyzer.getInterpretersCsv()
 
 csvSeparator = ","
 
+# fetches data
+# writes tracks to csv
 class Oe3Crawler:
-    def __init__(self,argv):
-        try:
-            self.executeOptions()
-        except Exception as e:
-            traceback.print_exc()
-            self.Log("Exited with an error: " + str(e))
+    def __init__(self):
+        self.fetchData()
+        self.deleteDuplicates()
+        self.writeTracks()
+        self.writeIntoCSV("tracks.csv")
     
     def Log(self,val):
         print(val)
-    
-    def executeOptions(self):
-        # parse args
-        parser = argparse.ArgumentParser()
-        parser.add_argument("mode", help="the mode that should be used",type=str)
-        args = parser.parse_args()
-
-        mode = args.mode
-        if(mode == "fetchData"):
-            self.fetchData()
-            self.deleteDuplicates()
-            self.writeTracks()
-        elif(mode == "analyze"):
-            self.readTracks()
-            self.deleteDuplicates()
-            #self.printTracks()
-            self.writeIntoCSV("tracks.csv")
-            self.writeInterpretersIntoCSV("interpreters.csv")
-        elif(mode == "all"):
-            self.fetchData()
-            self.deleteDuplicates()
-            self.writeTracks()
-            self.writeIntoCSV("tracks.csv")
-            self.writeInterpretersIntoCSV("interpreters.csv")
     
     def getFormattedDate(self,date):
         return date[0:4] + "-" + date[4:6] + "-" + date[6:8]
@@ -94,46 +97,6 @@ class Oe3Crawler:
         for trackDayTrack in trackDay["tracks"]:
             if(trackDayTrack["title"] == track["title"] and trackDayTrack["interpreter"] == track["interpreter"]):
                 return trackDayTrack["num"]
-        return 0
-
-    def writeInterpretersIntoCSV(self,fileName):
-
-        self.getInterpreters()
-
-        f = open(fileName,"w")
-        
-        rows, cols = (len(self.interpreters) + 1, len(self.trackDays) + 1)
-        fields = [[0 for i in range(cols)] for j in range(rows)]
-
-        fields[0][0] = "interpreter"
-
-        # write days TODO: format
-        for i in range(len(self.trackDays)):
-            fields[0][i + 1] = self.getFormattedDate(self.trackDays[i]["day"])
-
-        # write titles + interpreters
-        for i in range(len(self.interpreters)):
-            interpreter = self.interpreters[i]
-            fields[i + 1][0] = "\"" + interpreter + "\""
-
-        # write nums
-        for i in range(len(self.interpreters)):
-            for j in range(len(self.interpreterDays)):
-                interpreterDay = self.interpreterDays[j]
-                interpreter = self.interpreters[i]
-                fields[i + 1][j + 1] = self.getTrackNumFromInterpreterDay(interpreter,interpreterDay)
-
-        for fieldList in fields:
-            for field in fieldList:
-                f.write(str(field) + csvSeparator)
-            f.write("\n")
-        
-        f.close()
-
-    def getTrackNumFromInterpreterDay(self,_interpreter,interpreterDay):
-        for interpreter in interpreterDay:
-            if(interpreter["interpreter"] == _interpreter):
-                return interpreter["num"]
         return 0
 
     def readTracks(self):
@@ -201,62 +164,6 @@ class Oe3Crawler:
                     "num": num
                 })
         return tracksNew
-
-    def getInterpreters(self):
-
-        self.deleteInterpreterDuplicates()
-
-        interpreters = []
-
-        for interpreterDay in self.interpreterDays:
-            for interpreter in interpreterDay:
-                #self.Log(interpreter)
-                if(not self.isInInterpreters(interpreters,interpreter["interpreter"])):
-                    interpreters.append(interpreter["interpreter"])
-
-        self.interpreters = sorted(interpreters)
-
-    def isInInterpreters(self,interpreters,_interpreter):
-        for interpreter in interpreters:
-            if(interpreter == _interpreter):
-                return True
-        return False
-
-    def deleteInterpreterDuplicates(self):
-
-        interpreterDays = []
-
-        for trackDay in self.trackDays:
-            interpreterDays.append(self.deleteInterpreterDayDuplicates(trackDay["tracks"]))
-
-        self.interpreterDays = interpreterDays
-
-    def deleteInterpreterDayDuplicates(self,tracks):
-
-        interpreters = []
-
-        def isInInterpreters(_interpreter):
-            for interpreter in interpreters:
-                if(interpreter["interpreter"] == _interpreter):
-                    return True
-            return False
-        def getInterpreter(_interpreter):
-            for interpreter in interpreters:
-                if(interpreter["interpreter"] == _interpreter):
-                    return interpreter
-        def incrementInterpreter(track):
-            interpreter = getInterpreter(track["interpreter"])
-            interpreter["num"] = interpreter["num"] + track["num"]
-
-        for track in tracks:
-            if(isInInterpreters(track["interpreter"])):
-                incrementInterpreter(track)
-            else:
-                interpreters.append({
-                    "interpreter": track["interpreter"],
-                    "num": track["num"]
-                })
-        return interpreters
     
     def doesTrackDayExist(self,day):
 
@@ -316,6 +223,19 @@ class Oe3Crawler:
         r = requests.get(href)
         if(r.status_code == 200):
             return r.json()
+
+class TrackAnalyzer:
+    def __init__(self):
+        self.readTracks()
+
+    def readTracks(self):
+        self.df = pd.read_csv('tracks.csv')
+        # drop last column
+        self.df.drop(self.df.columns[len(self.df.columns)-1], axis=1, inplace=True)
+    def getInterpretersCsv(self):
+        # group by interpreter
+        df_i = self.df.groupby("interpreter").sum()
+        df_i.to_csv("interpreters.csv")
 
 if __name__ == "__main__":
    main(sys.argv[1:])
