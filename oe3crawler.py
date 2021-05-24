@@ -46,6 +46,9 @@ class Oe3Crawler:
             self.writeIntoCSV("tracks.csv")
             self.writeInterpretersIntoCSV("interpreters.csv")
     
+    def getFormattedDate(self,date):
+        return date[0:4] + "-" + date[4:6] + "-" + date[6:8]
+    
     def writeTracks(self,fileName="tracks.json"):
         f = open(fileName,"w")
         f.write(json.dumps(self.trackDays))
@@ -65,7 +68,7 @@ class Oe3Crawler:
 
         # write days TODO: format
         for i in range(len(self.trackDays)):
-            fields[0][i + 2] = self.trackDays[i]["day"]
+            fields[0][i + 2] = self.getFormattedDate(self.trackDays[i]["day"])
 
         # write titles + interpreters
         for i in range(len(self.tracks)):
@@ -106,7 +109,7 @@ class Oe3Crawler:
 
         # write days TODO: format
         for i in range(len(self.trackDays)):
-            fields[0][i + 1] = self.trackDays[i]["day"]
+            fields[0][i + 1] = self.getFormattedDate(self.trackDays[i]["day"])
 
         # write titles + interpreters
         for i in range(len(self.interpreters)):
