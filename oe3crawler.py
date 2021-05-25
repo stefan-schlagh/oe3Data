@@ -34,6 +34,8 @@ def fetchData():
 def analyze():
     trackAnalyzer = TrackAnalyzer()
     trackAnalyzer.getInterpretersCsv()
+    trackAnalyzer.getTracksByWeek()
+    trackAnalyzer.getInterpretersByWeek()
 
 csvSeparator = ","
 
@@ -229,13 +231,66 @@ class TrackAnalyzer:
         self.readTracks()
 
     def readTracks(self):
-        self.df = pd.read_csv('tracks.csv')
+        self.dfTracks = pd.read_csv('tracks.csv')
         # drop last column
-        self.df.drop(self.df.columns[len(self.df.columns)-1], axis=1, inplace=True)
+        self.dfTracks.drop(self.dfTracks.columns[len(self.dfTracks.columns)-1], axis=1, inplace=True)
+
     def getInterpretersCsv(self):
         # group by interpreter
-        df_i = self.df.groupby("interpreter").sum()
-        df_i.to_csv("interpreters.csv")
+        self.dfInterpreters = self.dfTracks.groupby("interpreter").sum()
+        self.dfInterpreters.to_csv("interpreters.csv")
+
+    def getTransposedTracks(self):
+        df = self.dfTracks.transpose()
+        # set col header: https://stackoverflow.com/questions/55283790/how-to-turn-multiple-rows-into-multiple-headers-headers-in-pandas-dataframe
+        df.columns = [df.iloc[0].values, df.iloc[1].values]
+        df = df.iloc[2:].reset_index(drop=False)
+        # change name of coumn 1
+        new_columns = df.columns.values
+        new_columns[0] = 'date'
+        df.columns  = new_columns
+
+        # create date index column
+        # src: http://blog.josephmisiti.com/group-by-datetimes-in-pandas
+        df["date"] = pd.to_datetime(df["date"])
+        df["date_"] = df["date"].apply( lambda df : 
+            datetime.datetime(year=df.year, month=df.month, day=df.day))
+        # set index column	
+        df.set_index(df["date_"],inplace=True)
+        # drop column "date"
+        df.drop(df.columns[[0]], axis=1, inplace=True)
+
+        return df
+
+    def getTransposedInterpreters(self):
+        df = self.dfInterpreters.transpose()
+        # rename index column
+        df.index.name = "date_"
+        # create date index column
+        # src: https://stackoverflow.com/questions/40815238/python-pandas-convert-index-to-datetime
+        df.index = pd.to_datetime(df.index)
+
+        return df
+
+    def getTracksByWeek(self):
+        df = self.getTransposedTracks()
+        # group by week
+        df = df.resample('W', on='date_')[df.columns].sum()
+        # transpose back
+        df_t = df.transpose()
+        # write to csv
+        df_t.to_csv("tw2.csv")
+
+    def getInterpretersByWeek(self):
+        df = self.getTransposedInterpreters()
+        print(df.info())
+        print(df.head(20))
+        # group by week
+        df = df.resample('W')[df.columns].sum()
+        # transpose back
+        df_t = df.transpose()
+        # write to csv
+        df_t.to_csv("iw2.csv")
 
 if __name__ == "__main__":
    main(sys.argv[1:])
