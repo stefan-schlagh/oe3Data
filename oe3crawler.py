@@ -34,6 +34,8 @@ def fetchData():
 def analyze():
     trackAnalyzer = TrackAnalyzer()
     trackAnalyzer.getInterpretersCsv()
+    trackAnalyzer.getTracksByWeek()
+    trackAnalyzer.getInterpretersByWeek()
 
 csvSeparator = ","
 
@@ -229,13 +231,132 @@ class TrackAnalyzer:
         self.readTracks()
 
     def readTracks(self):
-        self.df = pd.read_csv('tracks.csv')
+        self.dfTracks = pd.read_csv('tracks.csv')
         # drop last column
-        self.df.drop(self.df.columns[len(self.df.columns)-1], axis=1, inplace=True)
+        self.dfTracks.drop(self.dfTracks.columns[len(self.dfTracks.columns)-1], axis=1, inplace=True)
+
     def getInterpretersCsv(self):
         # group by interpreter
-        df_i = self.df.groupby("interpreter").sum()
-        df_i.to_csv("interpreters.csv")
+        self.dfInterpreters = self.dfTracks.groupby("interpreter").sum()
+        self.dfInterpreters.to_csv("interpreters.csv")
+
+    def getTransposedTracks(self):
+        df = self.dfTracks.transpose()
+        # set col header: https://stackoverflow.com/questions/55283790/how-to-turn-multiple-rows-into-multiple-headers-headers-in-pandas-dataframe
+        df.columns = [df.iloc[0].values, df.iloc[1].values]
+        df = df.iloc[2:].reset_index(drop=False)
+        # change name of coumn 1
+        new_columns = df.columns.values
+        new_columns[0] = 'date'
+        df.columns  = new_columns
+
+        # create date index column
+        # src: http://blog.josephmisiti.com/group-by-datetimes-in-pandas
+        df["date"] = pd.to_datetime(df["date"])
+        df["date_"] = df["date"].apply( lambda df : 
+            datetime.datetime(year=df.year, month=df.month, day=df.day))
+        # set index column	
+        df.set_index(df["date_"],inplace=True)
+        # drop column "date"
+        df.drop(df.columns[[0]], axis=1, inplace=True)
+
+        return df
+
+    def getTransposedInterpreters(self):
+        df = self.dfInterpreters.transpose()
+        # rename index column
+        df.index.name = "date_"
+        # create date index column
+        # src: https://stackoverflow.com/questions/40815238/python-pandas-convert-index-to-datetime
+        df.index = pd.to_datetime(df.index)
+
+        return df
+
+    def getTracksByWeek(self):
+        fileName="tw2.csv"
+        # top x is evaluated
+        topx = 15
+        self.tracksTop10 = []
+
+        df = self.getTransposedTracks()
+        # group by week
+        df = df.resample('W', on='date_')[df.columns].sum()
+
+        # set dates
+        self.dates = []
+        for date in df.index:
+            self.dates.append(date)
+
+        print(df.columns.values)
+
+        # transpose back
+        df_t = df.transpose()
+        # write to csv
+        df_t.to_csv(fileName)
+
+        # read again
+        df = pd.read_csv(fileName)
+        # delete first and last column
+        firstDate = self.dates[0]
+        df.drop(str(firstDate.date()), axis=1, inplace=True)
+        self.dates.remove(firstDate)
+        lastDate = self.dates[len(self.dates) - 1]
+        df.drop(str(lastDate.date()), axis=1, inplace=True)
+        self.dates.remove(lastDate)
+        #str(date.date())
+        # sort
+        tracksTop10Titles = []
+        for date in self.dates:
+            #print(date)
+            #print(df.head(10))
+
+            df.sort_values(by=str(date.date()), inplace=True, ascending=False)
+            #print(df.head(10))
+            df = df.reset_index(drop=True)
+
+            print(df.head(15))
+
+            # add track if not already here
+            for i in range(topx):
+                track = df.loc[i].values
+                # if not already in top 10, add
+                trackTitle = track[0] + " " + track[1]
+
+                if(not trackTitle in tracksTop10Titles):
+                    tracksTop10Titles.append(trackTitle)
+                    self.tracksTop10.append(track)
+
+                #print(df.loc[i].values.tolist())
+                #print(json.dumps(df.loc[i].values.tolist()))"""
+
+            #print(df_t.head(10))
+        print(self.tracksTop10)
+
+        for track in tracksTop10Titles:
+            print(track)
+        
+        #dfNew = pd.DataFrame(df.columns.values)
+        #for i in range(len(self.tracksTop10)):
+        #    dfNew.loc[i] = self.tracksTop10[i]
+        dfNew = pd.DataFrame(self.tracksTop10)
+        dfNew.columns = df.columns.values
+
+        #print(dfNew)
+
+        #for track in self.tracksTop10:
+        #    print(track)
+
+        dfNew.to_csv("top" + str(topx) + ".csv")
+
+    def getInterpretersByWeek(self):
+        df = self.getTransposedInterpreters()
+        # group by week
+        df = df.resample('W')[df.columns].sum()
+        # transpose back
+        df_t = df.transpose()
+        # write to csv
+        df_t.to_csv("iw2.csv")
+        df_t.to_json("iw2.json")
 
 if __name__ == "__main__":
    main(sys.argv[1:])

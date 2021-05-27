@@ -1,10 +1,12 @@
 *.txt
 *.csv
 *.xlsx
+*.json
 
 #exclude tracks.csv, interpreters.csv
 !tracks.csv
 !interpreters.csv
+!tracks.json
 
 #exclude requirements
 !requirements.txt
