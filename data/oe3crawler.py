@@ -276,7 +276,7 @@ class TrackAnalyzer:
         fileName="tw2.csv"
         # top x is evaluated
         topx = 15
-        self.tracksTop10 = []
+        self.tracksTopX = []
 
         df = self.getTransposedTracks()
         # group by week
@@ -286,8 +286,6 @@ class TrackAnalyzer:
         self.dates = []
         for date in df.index:
             self.dates.append(date)
-
-        print(df.columns.values)
 
         # transpose back
         df_t = df.transpose()
@@ -303,18 +301,12 @@ class TrackAnalyzer:
         lastDate = self.dates[len(self.dates) - 1]
         df.drop(str(lastDate.date()), axis=1, inplace=True)
         self.dates.remove(lastDate)
-        #str(date.date())
         # sort
-        tracksTop10Titles = []
+        tracksTopTitles = []
         for date in self.dates:
-            #print(date)
-            #print(df.head(10))
 
             df.sort_values(by=str(date.date()), inplace=True, ascending=False)
-            #print(df.head(10))
             df = df.reset_index(drop=True)
-
-            print(df.head(15))
 
             # add track if not already here
             for i in range(topx):
@@ -322,41 +314,65 @@ class TrackAnalyzer:
                 # if not already in top 10, add
                 trackTitle = track[0] + " " + track[1]
 
-                if(not trackTitle in tracksTop10Titles):
-                    tracksTop10Titles.append(trackTitle)
-                    self.tracksTop10.append(track)
+                if(not trackTitle in tracksTopTitles):
+                    tracksTopTitles.append(trackTitle)
+                    self.tracksTopX.append(track)
 
-                #print(df.loc[i].values.tolist())
-                #print(json.dumps(df.loc[i].values.tolist()))"""
-
-            #print(df_t.head(10))
-        print(self.tracksTop10)
-
-        for track in tracksTop10Titles:
-            print(track)
-        
-        #dfNew = pd.DataFrame(df.columns.values)
-        #for i in range(len(self.tracksTop10)):
-        #    dfNew.loc[i] = self.tracksTop10[i]
-        dfNew = pd.DataFrame(self.tracksTop10)
+        dfNew = pd.DataFrame(self.tracksTopX)
         dfNew.columns = df.columns.values
 
-        #print(dfNew)
-
-        #for track in self.tracksTop10:
-        #    print(track)
-
-        dfNew.to_csv("top" + str(topx) + ".csv")
-
+        dfNew.to_csv("topt" + str(topx) + ".csv")
+        
     def getInterpretersByWeek(self):
+        fileName="iw2.csv"
+        # top x is evaluated
+        topx = 15
+        self.interpretersTopX = []
+
         df = self.getTransposedInterpreters()
         # group by week
         df = df.resample('W')[df.columns].sum()
+
+        # set dates
+        self.dates = []
+        for date in df.index:
+            self.dates.append(date)
+
         # transpose back
         df_t = df.transpose()
         # write to csv
-        df_t.to_csv("iw2.csv")
-        df_t.to_json("iw2.json")
+        df_t.to_csv(fileName)
+        
+        # read again
+        df = pd.read_csv(fileName)
+        # delete first and last column
+        firstDate = self.dates[0]
+        df.drop(str(firstDate.date()), axis=1, inplace=True)
+        self.dates.remove(firstDate)
+        lastDate = self.dates[len(self.dates) - 1]
+        df.drop(str(lastDate.date()), axis=1, inplace=True)
+        self.dates.remove(lastDate)
+        # sort
+        interpretersTopTitles = []
+        for date in self.dates:
+
+            df.sort_values(by=str(date.date()), inplace=True, ascending=False)
+            df = df.reset_index(drop=True)
+
+            # add track if not already here
+            for i in range(topx):
+                iRow = df.loc[i].values
+                # if not already in top 10, add
+                interpreter = iRow[0]
+
+                if(not interpreter in interpretersTopTitles):
+                    interpretersTopTitles.append(interpreter)
+                    self.interpretersTopX.append(iRow)
+
+        dfNew = pd.DataFrame(self.interpretersTopX)
+        dfNew.columns = df.columns.values
+
+        dfNew.to_csv("topi" + str(topx) + ".csv")
 
 if __name__ == "__main__":
    main(sys.argv[1:])
