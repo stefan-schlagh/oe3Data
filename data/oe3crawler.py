@@ -63,7 +63,7 @@ class Oe3Crawler:
 
         self.getTracks()
 
-        f = open(fileName,"w")
+        f = open(fileName,"w",encoding="utf-8")
         
         rows, cols = (len(self.tracks) + 1, len(self.trackDays) + 2)
         fields = [[0 for i in range(cols)] for j in range(rows)]
@@ -79,6 +79,7 @@ class Oe3Crawler:
         for i in range(len(self.tracks)):
             track = self.tracks[i]
             fields[i + 1][0] = "\"" + track["title"] + "\""
+            track["interpreter"] = track["interpreter"].replace("\"","")
             fields[i + 1][1] = "\"" + track["interpreter"] + "\""
 
         # write nums
