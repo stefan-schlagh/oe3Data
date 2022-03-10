@@ -124,7 +124,7 @@ class Oe3Crawler:
 
         for trackDay in self.trackDays:
             for track in trackDay['tracks']:
-                if(not self.isInTracks(tracks,track)):
+                if(not self.isInTracks(tracks,track) and not "Werbeblock" in track["title"]):
                     tracks.append(track)
         
         self.tracks = sorted(tracks, key=itemgetter('interpreter'))
