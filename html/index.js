@@ -1,7 +1,7 @@
 "use strict";
 (async function(){
 
-
+    // TODO mit react und recharts
     async function drawChart(path,id,indexLength,getName){
         const response = await fetch(path)
         const csv = CSVToArray(await response.text())
@@ -14,13 +14,14 @@
         for(const item of csv){
             top.push({
                 name: getName(item),
-                items: item.slice(indexLength + 1)
+                items: item.slice(indexLength)
             })
         }
+        console.log(top)
 
         const chartData = []
         for(let i = indexLength;i < header.length;i++){
-            chartData.push([moment(header[i]).week()])
+            chartData.push([new Date(header[i])])
         }
         // for each day and item
         for(let i = 0;i < header.length - indexLength;i++){
@@ -35,17 +36,19 @@
         function drawBasic() {
 
             const data = new google.visualization.DataTable();
-            data.addColumn('number', 'X');
+            data.addColumn('date','Date')
             
             for(const item of top){
                 data.addColumn('number', item.name);
             }
 
+            console.log(chartData)
             data.addRows(chartData)
 
+            console.log(data)
             const options = {
                 hAxis: {
-                title: 'Week'
+                    title: 'Week'
                 },
                 vAxis: {
                 title: 'Frequency'
@@ -60,7 +63,7 @@
     }
     }
     // draw tracks chart
-    drawChart("./data/topt15.csv","topTracks-chart",2,track => (track[1] + " " + track[2]))
+    drawChart("./data/topt15.csv","topTracks-chart",3,track => (track[1] + " " + track[2]))
     // draw interpreters chart
-    drawChart("./data/topi15.csv","topInterpreters-chart",1,interpreter => (interpreter[1]))
+    drawChart("./data/topi15.csv","topInterpreters-chart",2,interpreter => (interpreter[1]))
 })(this)
