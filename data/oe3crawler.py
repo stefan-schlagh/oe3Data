@@ -33,9 +33,13 @@ def fetchData():
 
 def analyze():
     trackAnalyzer = TrackAnalyzer()
+    # getInterpretersCsv
     trackAnalyzer.getInterpretersCsv()
+    # getTracksByWeek --> getTransposedTracks (works)
     trackAnalyzer.getTracksByWeek()
-    trackAnalyzer.getInterpretersByWeek()
+    # getInterpretersByWeek --> getTransposedInterpreters (does not work)
+    # TODO fix
+    #trackAnalyzer.getInterpretersByWeek()
 
 csvSeparator = ","
 
@@ -151,7 +155,7 @@ class Oe3Crawler:
                     return trackNew
         def incrementTrack(track):
             trackNew = getTrackNew(track)
-            self.Log(trackNew)
+            #self.Log(trackNew)
             trackNew["num"] = trackNew["num"] + 1
         
         for track in tracks:
@@ -198,7 +202,7 @@ class Oe3Crawler:
                 tracks = []
 
                 for broadcast in broadcastDay["broadcasts"]:
-                    self.Log(broadcast["title"])
+                    #self.Log(broadcast["title"])
 
                     broadCastDataItems = self.fetchJson(broadcast["href"])["items"]
                     for broadCastData in broadCastDataItems:
@@ -209,7 +213,7 @@ class Oe3Crawler:
                                 "title": broadCastData["title"],
                                 "description": broadCastData["description"]
                             }
-                            self.Log(songData)
+                            #self.Log(songData)
                             tracks.append(songData)
                 # append day
                 self.trackDays.append({
@@ -236,9 +240,16 @@ class TrackAnalyzer:
         # drop last column
         self.dfTracks.drop(self.dfTracks.columns[len(self.dfTracks.columns)-1], axis=1, inplace=True)
 
+        print("\nself.dfTracks")
+        print(self.dfTracks)
+
     def getInterpretersCsv(self):
         # group by interpreter
         self.dfInterpreters = self.dfTracks.groupby("interpreter").sum()
+
+        print("\nself.dfInterpreters")
+        print(self.dfInterpreters)
+
         self.dfInterpreters.to_csv("interpreters.csv")
 
     def getTransposedTracks(self):
@@ -263,10 +274,15 @@ class TrackAnalyzer:
 
         return df
 
+    # TODO fix
     def getTransposedInterpreters(self):
         df = self.dfInterpreters.transpose()
         # rename index column
         df.index.name = "date_"
+
+        #print(df)
+        #print(df.head(n=10).iloc[:, : 5].to_string(index=False))
+
         # create date index column
         # src: https://stackoverflow.com/questions/40815238/python-pandas-convert-index-to-datetime
         df.index = pd.to_datetime(df.index)
@@ -280,8 +296,19 @@ class TrackAnalyzer:
         self.tracksTopX = []
 
         df = self.getTransposedTracks()
+
+        # set index
+        df = df.set_index('date_')
+
+        print("\ntransposed tracks")
+        print(df)
+
         # group by week
-        df = df.resample('W', on='date_')[df.columns].sum()
+        #df = df.resample('W', on='date_')[df.columns].sum()
+        df = df.resample('W').sum()
+
+        print("\ngrouped by week")
+        print(df)
 
         # set dates
         self.dates = []
@@ -302,8 +329,10 @@ class TrackAnalyzer:
         lastDate = self.dates[len(self.dates) - 1]
         df.drop(str(lastDate.date()), axis=1, inplace=True)
         self.dates.remove(lastDate)
+
         # sort
         tracksTopTitles = []
+        print(self.dates)
         for date in self.dates:
 
             df.sort_values(by=str(date.date()), inplace=True, ascending=False)
@@ -313,16 +342,20 @@ class TrackAnalyzer:
             for i in range(topx):
                 track = df.loc[i].values
                 # if not already in top 10, add
-                trackTitle = track[0] + " " + track[1]
+                #trackTitle = track[0] + " " + track[1]
+                trackTitle = f"{track[0]} {track[1]}"
 
                 if(not trackTitle in tracksTopTitles):
                     tracksTopTitles.append(trackTitle)
                     self.tracksTopX.append(track)
 
-        dfNew = pd.DataFrame(self.tracksTopX)
-        dfNew.columns = df.columns.values
+        # does not work if only one week is looked at
+        if len(self.tracksTopX) > 0:
 
-        dfNew.to_csv("topt" + str(topx) + ".csv")
+            dfNew = pd.DataFrame(self.tracksTopX)
+            dfNew.columns = df.columns.values
+
+            dfNew.to_csv("topt" + str(topx) + ".csv")
         
     def getInterpretersByWeek(self):
         fileName="iw2.csv"
@@ -370,10 +403,12 @@ class TrackAnalyzer:
                     interpretersTopTitles.append(interpreter)
                     self.interpretersTopX.append(iRow)
 
-        dfNew = pd.DataFrame(self.interpretersTopX)
-        dfNew.columns = df.columns.values
+        # does not work if only one week is looked at
+        if len(self.interpretersTopX) > 0:
+            dfNew = pd.DataFrame(self.interpretersTopX)
+            dfNew.columns = df.columns.values
 
-        dfNew.to_csv("topi" + str(topx) + ".csv")
+            dfNew.to_csv("topi" + str(topx) + ".csv")
 
 if __name__ == "__main__":
    main(sys.argv[1:])

@@ -27,20 +27,11 @@ jobs:
           repository: stefan-schlagh/oe3Crawler
           token: ${{ secrets.REPOSITORY_ACCESS }}
           path: oe3Crawler
-      # node.js setup
-      - uses: actions/setup-node@v1
-        with:
-          node-version: '14'
-      # install dependencies
-      - name: pip install
-        run: |
-          cd ./oe3Crawler
-          pip install -r requirements.txt
       # run script
       - name: run script
         run: |
-          cd ./oe3Crawler/data
-          python oe3crawler.py all 
+          cd ./oe3Crawler
+          sh run.sh
       # commit changes
       - name: commit changes
         run: |
